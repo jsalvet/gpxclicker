@@ -49,6 +49,8 @@
     var map;
     var gpx;
     var selected = [];
+    var locationMarker;
+    var locationCircle;
     
     window.onload = function() {
         var mapCenter = [49.247817, 17.801512];
@@ -57,6 +59,24 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: 'Map data &copy; <a href="http://www.osm.org">OpenStreetMap</a>'
             }).addTo(map);
+
+        map.locate({watch: true});
+
+        map.on('locationfound', function(e) {
+            var radius = e.accuracy;
+
+            if (locationMarker) {
+                map.removeLayer(locationMarker);
+            }
+            if (locationCircle) {
+                map.removeLayer(locationCircle);
+            }
+
+            locationMarker = L.marker(e.latlng);
+            locationMarker.addTo(map);
+            locationCircle = L.circle(e.latlng, radius)
+            locationCircle.addTo(map);
+        });
 
         document.getElementById('loadGpx').onclick = function() {
             document.getElementById('fileInput').click();
@@ -89,7 +109,7 @@
 
                     if (e.target._icon.classList.contains("active")) {
                         selected.push(e.target.options.title);
-                        localStorage.setItem("selected", JSON.stringify(selected));
+                        localStorage.setItem("gpxselected", JSON.stringify(selected));
                     } else {
                         selected = selected.filter(function(item) {
                             return item !== e.target.options.title;
@@ -101,7 +121,7 @@
         }
 
         if (localStorage.getItem("gpx")) {
-            selected = JSON.parse(localStorage.getItem("selected"));
+            selected = JSON.parse(localStorage.getItem("gpxselected")) || [];
             load_gpx(localStorage.getItem("gpx"));
         }
 
@@ -111,7 +131,7 @@
             reader.onload = function(e) {
                 selected = [];
                 localStorage.setItem("gpx", e.target.result);
-                localStorage.setItem("selected", JSON.stringify(selected));
+                localStorage.setItem("gpxselected", JSON.stringify(selected));
                 load_gpx(e.target.result);
             }
             reader.readAsDataURL(file);
