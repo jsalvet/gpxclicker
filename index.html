@@ -1,0 +1,131 @@
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Gpxclicker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+
+        #gpx {
+            position: absolute;
+            top: 0;
+            right: 20px;
+            padding: 10px;
+            z-index: 1000;
+            display: inline-block;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        #loadGpx {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        .leaflet-marker-icon.active {
+            filter: hue-rotate(90deg);
+        }
+
+        .leaflet-popup {
+            display: none;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" integrity="sha512-Zcn6bjR/8RZbLEpLIeOwNtzREBAJnUKESxces60Mpoj+2okopSAcSUIUOseddDm0cxnGQzxIR7vJgsLZbdLE3w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGkVgiIyIWLLlTSXzWQzxuSg4DiQUCpauz/EWjgk5TYQqX/kvn9pG1NpYfqg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet-gpx/1.7.0/gpx.min.js" integrity="sha512-BsUtn1Ar2O78Q8YkY1f2pkioHOs8H43KUlP3PHus8lyAMODNq1CmemnU435dFk/SU37OGG+ooxvmEhAcNTEBFQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script type='text/javascript'>
+    var map;
+    var gpx;
+    var selected = [];
+    
+    window.onload = function() {
+        var mapCenter = [49.247817, 17.801512];
+
+        map = L.map('map').setView(mapCenter, 17);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: 'Map data &copy; <a href="http://www.osm.org">OpenStreetMap</a>'
+            }).addTo(map);
+
+        document.getElementById('loadGpx').onclick = function() {
+            document.getElementById('fileInput').click();
+        }
+
+        function load_gpx(raw_gpx) {
+            if (gpx) {
+                map.removeLayer(gpx);
+            }
+
+            gpx = new L.GPX(raw_gpx, {
+                async: true,
+                marker_options: {
+                    wptIconUrls: {
+                        '': 'pin.svg',
+                    },
+                }
+            });
+            gpx.on('loaded', function(e) {
+                map.fitBounds(e.target.getBounds());
+            });
+            gpx.on('addpoint', function(e) {
+                setTimeout(function() {
+                    if (selected.includes(e.point.options.title)) {
+                        e.point._icon.classList.add("active");
+                    }
+                }, 1);
+                e.point.on('click', function(e) {
+                    e.target._icon.classList.toggle("active");
+
+                    if (e.target._icon.classList.contains("active")) {
+                        selected.push(e.target.options.title);
+                        localStorage.setItem("selected", JSON.stringify(selected));
+                    } else {
+                        selected = selected.filter(function(item) {
+                            return item !== e.target.options.title;
+                        });
+                    }
+                });
+            });
+            gpx.addTo(map);
+        }
+
+        if (localStorage.getItem("gpx")) {
+            selected = JSON.parse(localStorage.getItem("selected"));
+            load_gpx(localStorage.getItem("gpx"));
+        }
+
+        document.getElementById('fileInput').onchange = function(e) {
+            var file = e.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                selected = [];
+                localStorage.setItem("gpx", e.target.result);
+                localStorage.setItem("selected", JSON.stringify(selected));
+                load_gpx(e.target.result);
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+    </script>
+</head>
+
+<body>
+    <div id="map"></div>
+    <div id="gpx">
+        <input type="file" id="fileInput" accept=".gpx,application/gpx+xml" />
+        <button id="loadGpx">Load GPX</button>
+    </div>
+</body>
+
+</html>
